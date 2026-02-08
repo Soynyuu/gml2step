@@ -24,6 +24,7 @@ from typing import List, Tuple, Optional
 # Try to import NumPy for vectorized operations
 try:
     import numpy as np
+
     NUMPY_AVAILABLE = True
 except ImportError:
     NUMPY_AVAILABLE = False
@@ -33,7 +34,9 @@ _LAST_NUMPY_TEXT: Optional[str] = None
 _LAST_NUMPY_COORDS: Optional[List[Tuple[float, float, Optional[float]]]] = None
 
 
-def parse_poslist_optimized(elem: ET.Element) -> List[Tuple[float, float, Optional[float]]]:
+def parse_poslist_optimized(
+    elem: ET.Element,
+) -> List[Tuple[float, float, Optional[float]]]:
     """
     Optimized coordinate parsing using list comprehension.
 
@@ -150,7 +153,7 @@ def parse_poslist_numpy(elem: ET.Element) -> List[Tuple[float, float, Optional[f
     try:
         # NumPy's fromstring is 10-20x faster than Python's float() loop
         # Uses C implementation for parsing
-        vals = np.fromstring(txt, sep=' ')
+        vals = np.fromstring(txt, sep=" ")
 
     except ValueError:
         # Fallback for invalid data
@@ -185,7 +188,9 @@ def parse_poslist_numpy(elem: ET.Element) -> List[Tuple[float, float, Optional[f
     return []
 
 
-def parse_pos_optimized(elem: ET.Element) -> Optional[Tuple[float, float, Optional[float]]]:
+def parse_pos_optimized(
+    elem: ET.Element,
+) -> Optional[Tuple[float, float, Optional[float]]]:
     """
     Parse single gml:pos element (optimized).
 
@@ -237,18 +242,18 @@ def benchmark_parsers(sample_text: str, iterations: int = 1000) -> dict:
     start = time.time()
     for _ in range(iterations):
         parse_poslist_optimized(elem)
-    results['optimized'] = time.time() - start
+    results["optimized"] = time.time() - start
 
     # Benchmark NumPy version (if available)
     if NUMPY_AVAILABLE:
         start = time.time()
         for _ in range(iterations):
             parse_poslist_numpy(elem)
-        results['numpy'] = time.time() - start
+        results["numpy"] = time.time() - start
 
         # Calculate speedup
-        if results['optimized'] > 0:
-            results['numpy_speedup'] = results['optimized'] / results['numpy']
+        if results["optimized"] > 0 and results["numpy"] > 0:
+            results["numpy_speedup"] = results["optimized"] / results["numpy"]
 
     return results
 

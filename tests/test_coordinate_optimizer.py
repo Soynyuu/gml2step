@@ -261,7 +261,7 @@ class TestBenchmarkParsers:
     @pytest.mark.skipif(not NUMPY_AVAILABLE, reason="numpy not installed")
     def test_numpy_benchmark_present(self):
         """NumPy benchmark present when numpy available."""
-        result = benchmark_parsers("1.0 2.0 3.0 4.0 5.0 6.0", iterations=10)
+        result = benchmark_parsers("1.0 2.0 3.0 4.0 5.0 6.0", iterations=1000)
         assert "numpy" in result
         assert "numpy_speedup" in result
 
