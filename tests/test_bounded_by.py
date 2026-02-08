@@ -209,3 +209,17 @@ class TestCountBoundedByFaces:
         building = ET.fromstring(xml_str)
         count = count_bounded_by_faces(building)
         assert count == 2
+
+    def test_direct_polygon_method3_fallback(self):
+        """Method 3: Surface with direct Polygon children (no LOD wrapper,
+        no MultiSurface) — covers lines 347-349."""
+        xml_str = f"""<bldg:Building {_NS_DECL} gml:id="direct_poly_bldg">
+            <bldg:boundedBy>
+                <bldg:WallSurface>
+                    {_SIMPLE_POLYGON}
+                </bldg:WallSurface>
+            </bldg:boundedBy>
+        </bldg:Building>"""
+        building = ET.fromstring(xml_str)
+        count = count_bounded_by_faces(building)
+        assert count == 1

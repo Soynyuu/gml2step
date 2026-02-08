@@ -211,3 +211,97 @@ class TestPolygonWithPosFallback:
         ext_xyz, _ = extract_polygon_xyz(poly)
         assert len(ext_xyz) == 4
         assert ext_xyz[0] == pytest.approx((0.0, 0.0, 0.0))
+
+
+# ── Additional edge cases for parse_poslist ────────────────────
+
+
+class TestParsePoslistEdgeCases:
+    """Cover additional paths: whitespace-only numpy, Python slow-path empty,
+    2D fallback on Python path, and invalid dimensionality on Python path."""
+
+    def test_whitespace_only_via_numpy(self):
+        """Whitespace-only text via numpy path returns empty (line 79)."""
+        # NumPy's fromstring with sep=' ' on whitespace returns 0-length array
+        elem = _poslist_elem("   \n  \t  ")
+        result = parse_poslist(elem)
+        assert result == []
+
+    def test_all_non_numeric_via_slow_path(self):
+        """All non-numeric tokens on slow path return empty (line 124)."""
+        elem = _poslist_elem("abc xyz !@#")
+        result = parse_poslist(elem)
+        assert result == []
+
+    def test_2d_fallback_python_path(self, monkeypatch):
+        """2D fallback on Python path (lines 136-138)."""
+        # Force Python-only path by disabling numpy
+        import gml2step.citygml.parsers.coordinates as coords_mod
+
+        monkeypatch.setattr(coords_mod, "NUMPY_AVAILABLE", False)
+        elem = _poslist_elem("1.0 2.0 3.0 4.0")
+        result = parse_poslist(elem)
+        assert len(result) == 2
+        assert result[0] == (1.0, 2.0, None)
+        assert result[1] == (3.0, 4.0, None)
+
+    def test_invalid_dimensionality_python_path(self, monkeypatch):
+        """Invalid dimensionality on Python path returns empty (lines 140-142)."""
+        import gml2step.citygml.parsers.coordinates as coords_mod
+
+        monkeypatch.setattr(coords_mod, "NUMPY_AVAILABLE", False)
+        elem = _poslist_elem("42.0")
+        result = parse_poslist(elem)
+        assert result == []
+
+
+# ── Interior ring gml:pos fallback ─────────────────────────────
+
+
+class TestInteriorRingPosFallback:
+    """Cover interior ring with gml:pos fallback (lines 210-212, 279-280)."""
+
+    def _make_polygon_with_pos_hole(self):
+        """Polygon with exterior posList and interior using gml:pos elements."""
+        gml = NS["gml"]
+        poly = ET.Element(f"{{{gml}}}Polygon")
+
+        # Exterior ring with posList
+        ext = ET.SubElement(poly, f"{{{gml}}}exterior")
+        lr = ET.SubElement(ext, f"{{{gml}}}LinearRing")
+        pl = ET.SubElement(lr, f"{{{gml}}}posList")
+        pl.text = "0.0 0.0 0.0 20.0 0.0 0.0 20.0 20.0 0.0 0.0 20.0 0.0 0.0 0.0 0.0"
+
+        # Interior ring with gml:pos (NOT posList)
+        interior = ET.SubElement(poly, f"{{{gml}}}interior")
+        lr2 = ET.SubElement(interior, f"{{{gml}}}LinearRing")
+        for coords in [
+            "5.0 5.0 1.0",
+            "10.0 5.0 1.0",
+            "10.0 10.0 1.0",
+            "5.0 10.0 1.0",
+            "5.0 5.0 1.0",
+        ]:
+            pos = ET.SubElement(lr2, f"{{{gml}}}pos")
+            pos.text = coords
+
+        return poly
+
+    def test_extract_polygon_xy_interior_pos(self):
+        """extract_polygon_xy() resolves interior ring gml:pos elements."""
+        poly = self._make_polygon_with_pos_hole()
+        ext, holes, z_vals = extract_polygon_xy(poly)
+        assert len(ext) == 5
+        assert len(holes) == 1
+        assert len(holes[0]) == 5
+        assert holes[0][0] == (5.0, 5.0)
+        assert 1.0 in z_vals  # Z values from interior gml:pos
+
+    def test_extract_polygon_xyz_interior_pos(self):
+        """extract_polygon_xyz() resolves interior ring gml:pos elements."""
+        poly = self._make_polygon_with_pos_hole()
+        ext, holes = extract_polygon_xyz(poly)
+        assert len(ext) == 5
+        assert len(holes) == 1
+        assert len(holes[0]) == 5
+        assert holes[0][0] == pytest.approx((5.0, 5.0, 1.0))

@@ -269,3 +269,54 @@ class TestBenchmarkParsers:
         """Works with minimal iterations."""
         result = benchmark_parsers("1.0 2.0 3.0", iterations=1)
         assert "optimized" in result
+
+
+# ===================================================================
+# Additional coverage: parse_poslist_numpy edge cases
+# ===================================================================
+
+
+class TestParsePoslistNumpyEdgeCases:
+    """Cover uncovered lines in parse_poslist_numpy()."""
+
+    def test_numpy_unavailable_fallback(self, monkeypatch):
+        """When NUMPY_AVAILABLE is False, falls back to optimized (line 139)."""
+        import gml2step.citygml.streaming.coordinate_optimizer as opt_mod
+
+        monkeypatch.setattr(opt_mod, "NUMPY_AVAILABLE", False)
+        elem = _elem("1.0 2.0 3.0")
+        result = parse_poslist_numpy(elem)
+        assert result == [(1.0, 2.0, 3.0)]
+
+    def test_whitespace_only_empty_via_numpy(self):
+        """Whitespace-only text: numpy returns 0-length array (line 163)."""
+        elem = _elem("   \t  \n  ")
+        result = parse_poslist_numpy(elem)
+        assert result == []
+
+    def test_invalid_dimensionality_5_values(self):
+        """5 values through numpy path → invalid dimensionality → empty (line 188)."""
+        elem = _elem("1.0 2.0 3.0 4.0 5.0")
+        result = parse_poslist_numpy(elem)
+        assert result == []
+
+    @pytest.mark.skipif(not NUMPY_AVAILABLE, reason="numpy not installed")
+    def test_numpy_value_error_fallback(self, monkeypatch):
+        """ValueError from numpy → fallback to optimized (lines 158-160)."""
+        import numpy as np
+        import gml2step.citygml.streaming.coordinate_optimizer as opt_mod
+
+        original_fromstring = np.fromstring
+
+        def mock_fromstring(*args, **kwargs):
+            raise ValueError("mocked numpy error")
+
+        monkeypatch.setattr(np, "fromstring", mock_fromstring)
+        # Clear memoization cache
+        monkeypatch.setattr(opt_mod, "_LAST_NUMPY_TEXT", None)
+        monkeypatch.setattr(opt_mod, "_LAST_NUMPY_COORDS", None)
+        # Ensure alpha pattern check doesn't short-circuit (use numeric-only text)
+        elem = _elem("1.0 2.0 3.0")
+        result = parse_poslist_numpy(elem)
+        # Falls back to optimized parser
+        assert result == [(1.0, 2.0, 3.0)]

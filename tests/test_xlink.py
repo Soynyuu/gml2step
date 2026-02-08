@@ -253,6 +253,70 @@ class TestResolveXlinkFromDict:
 # ── build_local_index_from_dict ───────────────────────────────
 
 
+class TestResolveXlinkNoHashPrefix:
+    """Test resolve_xlink() when href has no '#' prefix (line 107)."""
+
+    def test_href_without_hash(self, xlink_root):
+        idx = build_id_index(xlink_root)
+        # Create an element with a bare href (no '#')
+        elem = ET.Element("ref", {f"{{{NS['xlink']}}}href": "POLY_A"})
+        result = resolve_xlink(elem, idx)
+        assert result is not None
+        assert result.get(f"{{{NS['gml']}}}id") == "POLY_A"
+
+
+class TestResolveXlinkDebugMode:
+    """Test resolve_xlink() with debug=True and unresolvable href (lines 114-125)."""
+
+    def test_debug_missing_ref_with_similar_ids(self, xlink_root, capsys):
+        idx = build_id_index(xlink_root)
+        # Use href that contains a substring of existing IDs
+        elem = ET.Element("ref", {f"{{{NS['xlink']}}}href": "#POLY"})
+        result = resolve_xlink(elem, idx, debug=True)
+        assert result is None
+
+    def test_debug_missing_ref_no_similar_ids(self, xlink_root, capsys):
+        idx = build_id_index(xlink_root)
+        elem = ET.Element("ref", {f"{{{NS['xlink']}}}href": "#ZZZZZ_NO_MATCH"})
+        result = resolve_xlink(elem, idx, debug=True)
+        assert result is None
+
+
+class TestExtractPolygonWithXlinkContainer:
+    """Test extract_polygon_with_xlink() where XLink target is a container (lines 188-190)."""
+
+    def test_xlink_target_is_container_with_polygon(self):
+        """XLink target is NOT a Polygon but contains a Polygon descendant."""
+        gml = NS["gml"]
+        xlink = NS["xlink"]
+
+        # Create a container element that holds a Polygon
+        container = ET.Element(
+            f"{{{gml}}}MultiSurface", {f"{{{gml}}}id": "CONTAINER_1"}
+        )
+        surf_member = ET.SubElement(container, f"{{{gml}}}surfaceMember")
+        polygon = ET.SubElement(
+            surf_member, f"{{{gml}}}Polygon", {f"{{{gml}}}id": "INNER_P"}
+        )
+        ext = ET.SubElement(polygon, f"{{{gml}}}exterior")
+        lr = ET.SubElement(ext, f"{{{gml}}}LinearRing")
+        pl = ET.SubElement(lr, f"{{{gml}}}posList")
+        pl.text = "0 0 0 1 0 0 1 1 0 0 0 0"
+
+        # Create the referring element
+        ref_elem = ET.Element(
+            f"{{{gml}}}surfaceMember", {f"{{{xlink}}}href": "#CONTAINER_1"}
+        )
+
+        # Build index with the container
+        idx = {"CONTAINER_1": container}
+
+        result = extract_polygon_with_xlink(ref_elem, idx)
+        assert result is not None
+        assert result.tag == f"{{{gml}}}Polygon"
+        assert result.get(f"{{{gml}}}id") == "INNER_P"
+
+
 class TestBuildLocalIndexFromDict:
     def test_creates_cache(self):
         elem = ET.Element("x")

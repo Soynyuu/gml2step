@@ -445,3 +445,103 @@ class TestParseCitygmlFootprints:
         footprints = parse_citygml_footprints(path, default_height=42.0)
         # All Z values are 0, so Z range is 0. Should fall back to default.
         assert footprints[0].height == 42.0
+
+    def test_failing_xy_transform(self, tmp_path):
+        """xy_transform that raises an exception is caught (lines 294-295)."""
+        buildings_xml = """
+        <bldg:Building gml:id="bldg_fail_tx">
+            <bldg:lod0FootPrint>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon>
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>1 2 0 3 4 0 5 6 0 7 8 0</gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </bldg:lod0FootPrint>
+        </bldg:Building>"""
+        path = self._write_gml(buildings_xml, str(tmp_path))
+
+        def bad_transform(x, y):
+            raise RuntimeError("transform failed")
+
+        # Should not raise — caught internally, original coords used
+        footprints = parse_citygml_footprints(path, xy_transform=bad_transform)
+        assert len(footprints) == 1
+        # Original untransformed coordinates should remain
+        assert footprints[0].exterior[0] == (1.0, 2.0)
+
+    def test_polygon_with_too_few_vertices(self, tmp_path):
+        """Polygon with < 3 exterior vertices is skipped (lines 297-298)."""
+        buildings_xml = """
+        <bldg:Building gml:id="bldg_tiny">
+            <bldg:lod0FootPrint>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon>
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>1 2 0 3 4 0</gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </bldg:lod0FootPrint>
+        </bldg:Building>"""
+        path = self._write_gml(buildings_xml, str(tmp_path))
+        footprints = parse_citygml_footprints(path)
+        assert len(footprints) == 0
+
+
+class TestExtractPolygonXYInteriorPosFallback:
+    """Cover extract_polygon_xy() interior ring with gml:pos fallback (lines 89-91)."""
+
+    def test_interior_ring_pos_elements(self):
+        """Interior ring using gml:pos instead of gml:posList."""
+        poly = _make_polygon_xml(
+            [(0, 0, 0), (20, 0, 0), (20, 20, 0), (0, 20, 0)],
+        )
+        gml = "http://www.opengis.net/gml"
+        # Remove interior posList and add gml:pos elements instead
+        interior = ET.SubElement(poly, f"{{{gml}}}interior")
+        lr = ET.SubElement(interior, f"{{{gml}}}LinearRing")
+        for coords in ["5 5 1", "10 5 1", "10 10 1", "5 10 1", "5 5 1"]:
+            pos = ET.SubElement(lr, f"{{{gml}}}pos")
+            pos.text = coords
+
+        ext, holes, z_vals = extract_polygon_xy(poly)
+        assert len(ext) == 4
+        assert len(holes) == 1
+        assert len(holes[0]) == 5
+        assert holes[0][0] == (5.0, 5.0)
+
+
+class TestEstimateBuildingHeightChildText:
+    """Cover _first_text() child element text path (lines 183-186)."""
+
+    def test_height_in_child_element(self):
+        """Height value stored in a child element, not direct text."""
+        xml_str = f"""<bldg:Building {_NS_DECL} gml:id="bldg_child_text">
+            <bldg:measuredHeight><child>35.0</child></bldg:measuredHeight>
+            <bldg:lod0FootPrint>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon>
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>0 0 0 10 0 0 10 10 0 0 10 0</gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </bldg:lod0FootPrint>
+        </bldg:Building>"""
+        building = ET.fromstring(xml_str)
+        height = estimate_building_height(building, 10.0)
+        assert height == 35.0
