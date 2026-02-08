@@ -17,7 +17,7 @@ gml2step reads CityGML 2.0 files — including large-scale datasets from Japan's
 - **STEP conversion** via OpenCASCADE with automatic LoD fallback (LoD3 -> LoD2 -> LoD1 -> LoD0)
 - **4 conversion methods**: solid, sew, extrude, and auto (tries all in sequence)
 - **7-phase geometry pipeline** with progressive auto-repair
-- **PLATEAU integration** for fetching CityGML data from Japan's national 3D city model
+- **PLATEAU data fetching** via public APIs (MLIT Data Catalog + OSM Nominatim)
 - **Footprint extraction** for 2D analysis without requiring OCCT
 - **CRS auto-detection** with built-in support for all 19 Japan Plane Rectangular CS zones
 
@@ -192,17 +192,16 @@ All 6 CityGML 2.0 boundary surface types are recognized: WallSurface, RoofSurfac
 
 ## Streaming Parser
 
-For large CityGML files (common in PLATEAU datasets), gml2step provides a SAX-style streaming parser:
+For large CityGML files (common in PLATEAU datasets), gml2step provides a SAX-style streaming parser that processes one building at a time instead of loading the entire DOM tree into memory:
 
 - **O(1 building) memory** vs O(entire file) for DOM parsing
-- **~98% memory reduction** on typical PLATEAU datasets
-- **3-5x faster** than full DOM parsing
 - Two-tier XLink resolution cache (local per-building + global LRU)
-- Optional NumPy-accelerated coordinate parsing (10-20x faster)
+- Optional NumPy-accelerated coordinate parsing
+
+> **Note:** The streaming parser has not been formally benchmarked. Memory savings and speedup depend heavily on file size and building complexity. The theoretical advantage is that memory usage stays roughly constant regardless of file size, while DOM parsing scales linearly with file size.
 
 ```python
-# Process a 20GB PLATEAU file with ~100MB memory
-for building, xlinks in stream_parse("huge_plateau_file.gml"):
+for building, xlinks in stream_parse("large_plateau_file.gml"):
     process(building)
 ```
 
@@ -217,14 +216,24 @@ for building, xlinks in stream_parse("huge_plateau_file.gml"):
 
 [PLATEAU](https://www.mlit.go.jp/plateau/) is a project by Japan's Ministry of Land, Infrastructure, Transport and Tourism (MLIT) that provides open 3D city models for the entire country in CityGML format.
 
-gml2step provides optional integration with PLATEAU (`pip install "gml2step[plateau]"`):
+gml2step provides optional convenience functions for fetching PLATEAU data (`pip install "gml2step[plateau]"`). Under the hood, this is a thin wrapper around two public APIs:
+
+- **[PLATEAU Data Catalog API](https://api.plateauview.mlit.go.jp/)** (operated by MLIT) — queried for CityGML file URLs by mesh code or municipality
+- **[Nominatim](https://nominatim.openstreetmap.org/)** (OpenStreetMap) — used for geocoding Japanese addresses to latitude/longitude
+
+There is no custom backend server. All requests go directly to these public endpoints.
+
+### What it does
+
+1. **Address search**: Takes a Japanese address (e.g., "東京都千代田区霞が関3-2-1"), geocodes it via Nominatim, converts the coordinates to a JIS X 0410 mesh code, fetches CityGML files covering that area from the PLATEAU API, then parses and ranks the buildings by distance/name similarity.
+2. **Mesh code lookup**: Given a mesh code, fetches CityGML file URLs from the PLATEAU API and downloads them.
+3. **Building ID lookup**: Given a specific building ID and mesh code, fetches and parses just the relevant 1km grid area.
 
 ### Building Search
 
 ```python
 from gml2step.plateau.fetcher import search_buildings_by_address
 
-# Search by address — geocodes, fetches CityGML, parses, and ranks
 buildings = search_buildings_by_address(
     "東京都千代田区霞が関3-2-1",
     ranking_mode="hybrid",  # "distance", "name", or "hybrid"
@@ -260,15 +269,15 @@ from gml2step.plateau.api_client import fetch_plateau_datasets_by_mesh
 result = asyncio.run(fetch_plateau_datasets_by_mesh("53394525"))
 ```
 
-### Features
+### Other Features
 
-- **Geocoding** via Nominatim with Japan-specific validation and relevance scoring
-- **Building search** with 3 ranking modes: distance, name similarity (Levenshtein + token matching), hybrid
+- **Geocoding** via Nominatim (rate-limited to 1 req/sec per Nominatim policy), with Japan-specific validation and relevance scoring
+- **Building ranking** with 3 modes: distance, name similarity (Levenshtein + token matching), hybrid
 - **JIS X 0410 mesh code** conversion (1st through quarter mesh)
 - **Neighboring mesh enumeration** (3x3 grid) for boundary searches
 - **Async batch resolution** of mesh codes with concurrency control
-- **CityGML caching** (opt-in via `CITYGML_CACHE_ENABLED` / `CITYGML_CACHE_DIR` env vars)
-- **Nationwide mesh-to-municipality mapping** included as package data
+- **Local CityGML caching** (opt-in via `CITYGML_CACHE_ENABLED` / `CITYGML_CACHE_DIR` env vars)
+- **Offline mesh-to-municipality mapping** included as package data (avoids extra API calls)
 
 ## Architecture
 
