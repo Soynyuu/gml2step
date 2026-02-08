@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script>
+(function() {
+  var lang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+  var base = '/gml2step/';
+  if (lang === 'ja' || lang.startsWith('ja-')) {
+    window.location.replace(base + 'ja/');
+  } else {
+    window.location.replace(base + 'en/');
+  }
+})();
+</script>
+<meta http-equiv="refresh" content="0;url=/gml2step/en/">
+<title>Redirecting...</title>
+</head>
+<body></body>
+</html>
