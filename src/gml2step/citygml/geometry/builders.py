@@ -10,6 +10,11 @@ from typing import List, Tuple, Optional, Any
 
 from ..utils.logging import log
 
+_OCCT_INSTALL_MSG = (
+    "pythonocc-core is required for this operation. "
+    "Install it with: conda install -c conda-forge pythonocc-core"
+)
+
 
 def wire_from_coords_xy(coords: List[Tuple[float, float]]) -> Any:  # TopoDS_Wire
     """
@@ -30,8 +35,11 @@ def wire_from_coords_xy(coords: List[Tuple[float, float]]) -> Any:  # TopoDS_Wir
         - All points are placed at z=0
         - Wire is automatically closed
     """
-    from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakePolygon
-    from OCC.Core.gp import gp_Pnt
+    try:
+        from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakePolygon
+        from OCC.Core.gp import gp_Pnt
+    except ImportError:
+        raise RuntimeError(_OCCT_INSTALL_MSG) from None
 
     poly = BRepBuilderAPI_MakePolygon()
 
@@ -49,8 +57,7 @@ def wire_from_coords_xy(coords: List[Tuple[float, float]]) -> Any:  # TopoDS_Wir
 
 
 def wire_from_coords_xyz(
-    coords: List[Tuple[float, float, float]],
-    debug: bool = False
+    coords: List[Tuple[float, float, float]], debug: bool = False
 ) -> Optional[Any]:  # Optional[TopoDS_Wire]
     """
     Create a closed wire from 3D coordinates.
@@ -71,8 +78,11 @@ def wire_from_coords_xyz(
         - Wire is automatically closed
         - Returns None if creation fails (e.g., insufficient points)
     """
-    from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakePolygon
-    from OCC.Core.gp import gp_Pnt
+    try:
+        from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakePolygon
+        from OCC.Core.gp import gp_Pnt
+    except ImportError:
+        raise RuntimeError(_OCCT_INSTALL_MSG) from None
 
     try:
         poly = BRepBuilderAPI_MakePolygon()
@@ -94,7 +104,9 @@ def wire_from_coords_xyz(
 
         if not poly.IsDone():
             if debug:
-                log(f"Wire creation failed: BRepBuilderAPI_MakePolygon.IsDone() = False")
+                log(
+                    f"Wire creation failed: BRepBuilderAPI_MakePolygon.IsDone() = False"
+                )
             return None
 
         return poly.Wire()
@@ -109,7 +121,7 @@ def face_from_xyz_rings(
     ext: List[Tuple[float, float, float]],
     holes: List[List[Tuple[float, float, float]]],
     debug: bool = False,
-    planar_check: bool = False
+    planar_check: bool = False,
 ) -> Optional[Any]:  # Optional[TopoDS_Face]
     """
     Create a face from 3D polygon rings (exterior + optional holes).
@@ -135,14 +147,19 @@ def face_from_xyz_rings(
         - Failed hole creation is logged but does not fail the entire face
         - Outer wire creation failure causes face creation to fail
     """
-    from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeFace
+    try:
+        from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeFace
+    except ImportError:
+        raise RuntimeError(_OCCT_INSTALL_MSG) from None
 
     try:
         # Create outer wire
         outer = wire_from_coords_xyz(ext, debug=debug)
         if outer is None:
             if debug:
-                log(f"Face creation failed: outer wire creation failed ({len(ext)} points)")
+                log(
+                    f"Face creation failed: outer wire creation failed ({len(ext)} points)"
+                )
             return None
 
         # Create face with planar_check control
@@ -151,7 +168,9 @@ def face_from_xyz_rings(
 
         if not face_maker.IsDone():
             if debug:
-                log(f"Face creation failed: BRepBuilderAPI_MakeFace.IsDone() = False (planar_check={planar_check})")
+                log(
+                    f"Face creation failed: BRepBuilderAPI_MakeFace.IsDone() = False (planar_check={planar_check})"
+                )
             return None
 
         # Add holes if any
@@ -178,7 +197,7 @@ def face_from_xyz_rings(
 
 
 def triangulate_polygon_fan(
-    vertices: List[Tuple[float, float, float]]
+    vertices: List[Tuple[float, float, float]],
 ) -> List[List[Tuple[float, float, float]]]:
     """
     Triangulate a polygon using fan triangulation.
@@ -235,8 +254,7 @@ def triangulate_polygon_fan(
 
 
 def project_to_best_fit_plane(
-    vertices: List[Tuple[float, float, float]],
-    tolerance: float
+    vertices: List[Tuple[float, float, float]], tolerance: float
 ) -> Tuple[List[Tuple[float, float, float]], Tuple[float, float, float]]:
     """
     Project polygon vertices onto their best-fit plane.
@@ -270,10 +288,13 @@ def project_to_best_fit_plane(
         - Automatically falls back to original vertex if projection fails
         - Preserves vertex order
     """
-    from OCC.Core.gp import gp_Pnt
-    from OCC.Core.TColgp import TColgp_HArray1OfPnt
-    from OCC.Core.GeomPlate import GeomPlate_BuildAveragePlane
-    from OCC.Core.GeomAPI import GeomAPI_ProjectPointOnSurf
+    try:
+        from OCC.Core.gp import gp_Pnt
+        from OCC.Core.TColgp import TColgp_HArray1OfPnt
+        from OCC.Core.GeomPlate import GeomPlate_BuildAveragePlane
+        from OCC.Core.GeomAPI import GeomAPI_ProjectPointOnSurf
+    except ImportError:
+        raise RuntimeError(_OCCT_INSTALL_MSG) from None
 
     # Convert vertices to gp_Pnt array
     n = len(vertices)

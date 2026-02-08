@@ -12,13 +12,18 @@ from typing import List, Optional, Any
 
 from ..core.constants import (
     ULTRA_MODE_TOLERANCE_MULTIPLIERS,
-    INVALID_FACE_RATIO_THRESHOLD
+    INVALID_FACE_RATIO_THRESHOLD,
 )
 from ..utils.logging import log
 from .face_fixer import (
     validate_and_fix_face,
     normalize_face_orientation,
-    remove_duplicate_vertices
+    remove_duplicate_vertices,
+)
+
+_OCCT_INSTALL_MSG = (
+    "pythonocc-core is required for this operation. "
+    "Install it with: conda install -c conda-forge pythonocc-core"
 )
 
 
@@ -26,7 +31,7 @@ def build_shell_from_faces(
     faces: List[Any],  # List[TopoDS_Face]
     tolerance: float = 0.1,
     debug: bool = False,
-    shape_fix_level: str = "standard"
+    shape_fix_level: str = "standard",
 ) -> Optional[Any]:  # Optional[TopoDS_Shell or TopoDS_Compound]
     """
     Build a shell from a list of faces using sewing and fixing.
@@ -61,13 +66,16 @@ def build_shell_from_faces(
         - Multi-shell results are validated and potentially re-sewn for unification
     """
     # Import topods at function start to avoid scoping issues
-    from OCC.Core.TopoDS import topods, TopoDS_Compound
-    from OCC.Core.BRep import BRep_Builder, BRep_Tool
-    from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Sewing
-    from OCC.Core.TopExp import TopExp_Explorer
-    from OCC.Core.TopAbs import TopAbs_SHELL, TopAbs_FACE
-    from OCC.Core.ShapeFix import ShapeFix_Shape, ShapeFix_Shell
-    from OCC.Core.BRepCheck import BRepCheck_Analyzer
+    try:
+        from OCC.Core.TopoDS import topods, TopoDS_Compound
+        from OCC.Core.BRep import BRep_Builder, BRep_Tool
+        from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_Sewing
+        from OCC.Core.TopExp import TopExp_Explorer
+        from OCC.Core.TopAbs import TopAbs_SHELL, TopAbs_FACE
+        from OCC.Core.ShapeFix import ShapeFix_Shape, ShapeFix_Shell
+        from OCC.Core.BRepCheck import BRepCheck_Analyzer
+    except ImportError:
+        raise RuntimeError(_OCCT_INSTALL_MSG) from None
 
     if not faces:
         return None
@@ -123,7 +131,7 @@ def build_shell_from_faces(
         sewn_shape = None
         for i, tol in enumerate(tolerances_to_try):
             if debug:
-                log(f"  Sewing pass {i+1} with tolerance {tol:.9f}")
+                log(f"  Sewing pass {i + 1} with tolerance {tol:.9f}")
 
             sewing = BRepBuilderAPI_Sewing(tol, True, True, True, False)
             for fc in faces:
@@ -134,7 +142,7 @@ def build_shell_from_faces(
             # Check if sewing improved
             if sewn_shape is not None and not sewn_shape.IsNull():
                 if debug:
-                    log(f"  Pass {i+1} successful")
+                    log(f"  Pass {i + 1} successful")
 
                 # DEBUG: Check face count after this pass
                 if debug:
@@ -143,7 +151,9 @@ def build_shell_from_faces(
                     while face_exp_count.More():
                         pass_face_count += 1
                         face_exp_count.Next()
-                    log(f"  [SEWING PASS {i+1}] {len(faces)} input → {pass_face_count} output faces")
+                    log(
+                        f"  [SEWING PASS {i + 1}] {len(faces)} input → {pass_face_count} output faces"
+                    )
 
                 # Use this result as input for next pass
                 # Extract faces from sewn shape for next iteration
@@ -173,11 +183,15 @@ def build_shell_from_faces(
         while face_exp.More():
             sewn_face_count += 1
             face_exp.Next()
-        log(f"[SEWING DIAGNOSTIC] Input: {len(faces)} faces → Output: {sewn_face_count} faces in sewn shape")
+        log(
+            f"[SEWING DIAGNOSTIC] Input: {len(faces)} faces → Output: {sewn_face_count} faces in sewn shape"
+        )
         if sewn_face_count < len(faces):
             lost_faces = len(faces) - sewn_face_count
             loss_percentage = (lost_faces / len(faces)) * 100
-            log(f"[SEWING DIAGNOSTIC] ⚠ WARNING: {lost_faces} faces lost ({loss_percentage:.1f}%)")
+            log(
+                f"[SEWING DIAGNOSTIC] ⚠ WARNING: {lost_faces} faces lost ({loss_percentage:.1f}%)"
+            )
 
     # ===== Stage 5: Apply shape fixing based on level =====
     if shape_fix_level != "minimal":
@@ -229,7 +243,9 @@ def build_shell_from_faces(
     # Handle multiple shells: validate and potentially unify
     if shell_count > 1:
         if debug:
-            log(f"[SHELL DIAGNOSTIC] Multiple disconnected shells detected, validating each shell...")
+            log(
+                f"[SHELL DIAGNOSTIC] Multiple disconnected shells detected, validating each shell..."
+            )
 
         # Validate each shell and count faces
         shell_info = []
@@ -260,53 +276,64 @@ def build_shell_from_faces(
                 is_valid = False
                 invalid_face_count = face_count  # Assume all invalid on error
                 if debug:
-                    log(f"  Shell {i+1} validation error: {e}")
+                    log(f"  Shell {i + 1} validation error: {e}")
 
             # Calculate invalid face ratio
             invalid_ratio = invalid_face_count / face_count if face_count > 0 else 1.0
 
-            shell_info.append({
-                'index': i + 1,
-                'shell': sh,
-                'face_count': face_count,
-                'is_valid': is_valid,
-                'invalid_face_count': invalid_face_count,
-                'invalid_ratio': invalid_ratio
-            })
+            shell_info.append(
+                {
+                    "index": i + 1,
+                    "shell": sh,
+                    "face_count": face_count,
+                    "is_valid": is_valid,
+                    "invalid_face_count": invalid_face_count,
+                    "invalid_ratio": invalid_ratio,
+                }
+            )
 
             if debug:
                 if is_valid:
                     status = "✓ valid"
                 elif invalid_ratio < INVALID_FACE_RATIO_THRESHOLD:
-                    status = f"⚠ mostly valid ({invalid_face_count}/{face_count} invalid, {invalid_ratio*100:.1f}%)"
+                    status = f"⚠ mostly valid ({invalid_face_count}/{face_count} invalid, {invalid_ratio * 100:.1f}%)"
                 else:
-                    status = f"✗ invalid ({invalid_face_count}/{face_count} invalid, {invalid_ratio*100:.1f}%)"
-                log(f"  Shell {i+1}: {face_count} faces ({status})")
+                    status = f"✗ invalid ({invalid_face_count}/{face_count} invalid, {invalid_ratio * 100:.1f}%)"
+                log(f"  Shell {i + 1}: {face_count} faces ({status})")
 
         # Find shells that are valid or mostly valid (< threshold invalid faces)
         acceptable_shells = [
-            s for s in shell_info
-            if s['is_valid'] or s['invalid_ratio'] < INVALID_FACE_RATIO_THRESHOLD
+            s
+            for s in shell_info
+            if s["is_valid"] or s["invalid_ratio"] < INVALID_FACE_RATIO_THRESHOLD
         ]
 
         if acceptable_shells:
             # Collect valid faces from ALL acceptable shells
             if debug:
-                log(f"[SHELL DIAGNOSTIC] Found {len(acceptable_shells)} acceptable shell(s), collecting all valid faces...")
+                log(
+                    f"[SHELL DIAGNOSTIC] Found {len(acceptable_shells)} acceptable shell(s), collecting all valid faces..."
+                )
 
             all_valid_faces = []
             total_invalid_removed = 0
 
             for info in acceptable_shells:
-                shell_idx = info['index']
-                shell_obj = info['shell']
-                shell_face_count = info['face_count']
-                shell_is_valid = info['is_valid']
-                shell_invalid_count = info['invalid_face_count']
+                shell_idx = info["index"]
+                shell_obj = info["shell"]
+                shell_face_count = info["face_count"]
+                shell_is_valid = info["is_valid"]
+                shell_invalid_count = info["invalid_face_count"]
 
                 if debug:
-                    status = "✓ valid" if shell_is_valid else f"⚠ mostly valid ({shell_invalid_count} invalid)"
-                    log(f"  Processing Shell {shell_idx}: {shell_face_count} faces ({status})")
+                    status = (
+                        "✓ valid"
+                        if shell_is_valid
+                        else f"⚠ mostly valid ({shell_invalid_count} invalid)"
+                    )
+                    log(
+                        f"  Processing Shell {shell_idx}: {shell_face_count} faces ({status})"
+                    )
 
                 # Extract valid faces from this shell
                 face_exp = TopExp_Explorer(shell_obj, TopAbs_FACE)
@@ -332,20 +359,30 @@ def build_shell_from_faces(
                     face_exp.Next()
 
                 if debug and invalid_count > 0:
-                    log(f"    → Kept {valid_count} valid faces, removed {invalid_count} invalid faces")
+                    log(
+                        f"    → Kept {valid_count} valid faces, removed {invalid_count} invalid faces"
+                    )
                     total_invalid_removed += invalid_count
 
             if debug:
-                log(f"[SHELL DIAGNOSTIC] Collected {len(all_valid_faces)} valid faces from {len(acceptable_shells)} shells")
+                log(
+                    f"[SHELL DIAGNOSTIC] Collected {len(all_valid_faces)} valid faces from {len(acceptable_shells)} shells"
+                )
                 if total_invalid_removed > 0:
-                    log(f"[SHELL DIAGNOSTIC] Removed {total_invalid_removed} invalid faces total")
+                    log(
+                        f"[SHELL DIAGNOSTIC] Removed {total_invalid_removed} invalid faces total"
+                    )
 
             # Re-sew all collected valid faces into a unified shell
             if len(all_valid_faces) > 0:
                 if debug:
-                    log(f"[SHELL DIAGNOSTIC] Re-sewing {len(all_valid_faces)} faces into unified shell...")
+                    log(
+                        f"[SHELL DIAGNOSTIC] Re-sewing {len(all_valid_faces)} faces into unified shell..."
+                    )
 
-                sewing_unified = BRepBuilderAPI_Sewing(tolerance, True, True, True, False)
+                sewing_unified = BRepBuilderAPI_Sewing(
+                    tolerance, True, True, True, False
+                )
                 for fc in all_valid_faces:
                     sewing_unified.Add(fc)
                 sewing_unified.Perform()
@@ -359,13 +396,17 @@ def build_shell_from_faces(
                     unified_exp.Next()
 
                 if debug:
-                    log(f"[SHELL DIAGNOSTIC] Unified re-sewing produced {len(unified_shells)} shell(s)")
+                    log(
+                        f"[SHELL DIAGNOSTIC] Unified re-sewing produced {len(unified_shells)} shell(s)"
+                    )
 
                 if len(unified_shells) > 0:
                     # If multiple shells, create a Compound to preserve all geometry
                     if len(unified_shells) > 1:
                         if debug:
-                            log(f"[SHELL DIAGNOSTIC] Multiple disconnected shells detected, creating Compound to preserve all geometry...")
+                            log(
+                                f"[SHELL DIAGNOSTIC] Multiple disconnected shells detected, creating Compound to preserve all geometry..."
+                            )
 
                         # Log face counts for each shell
                         shell_face_counts = []
@@ -378,7 +419,7 @@ def build_shell_from_faces(
                             shell_face_counts.append(face_count)
 
                             if debug:
-                                log(f"  Unified shell {i+1}: {face_count} faces")
+                                log(f"  Unified shell {i + 1}: {face_count} faces")
 
                         # Create Compound containing all shells
                         compound = TopoDS_Compound()
@@ -391,7 +432,9 @@ def build_shell_from_faces(
                         total_faces_in_compound = sum(shell_face_counts)
 
                         if debug:
-                            log(f"[SHELL DIAGNOSTIC] Created Compound with {len(unified_shells)} shells ({total_faces_in_compound} total faces)")
+                            log(
+                                f"[SHELL DIAGNOSTIC] Created Compound with {len(unified_shells)} shells ({total_faces_in_compound} total faces)"
+                            )
 
                         # Return Compound instead of Shell
                         shell = compound
@@ -403,37 +446,51 @@ def build_shell_from_faces(
                             while unified_face_exp.More():
                                 unified_face_count += 1
                                 unified_face_exp.Next()
-                            log(f"[SHELL DIAGNOSTIC] Unified shell contains {unified_face_count} faces")
+                            log(
+                                f"[SHELL DIAGNOSTIC] Unified shell contains {unified_face_count} faces"
+                            )
                 else:
                     # Fallback: use largest acceptable shell if unification failed
                     if debug:
-                        log(f"[SHELL DIAGNOSTIC] Unified re-sewing produced no shells, using largest acceptable shell as fallback")
-                    largest_acceptable = max(acceptable_shells, key=lambda s: s['face_count'])
-                    shell = largest_acceptable['shell']
+                        log(
+                            f"[SHELL DIAGNOSTIC] Unified re-sewing produced no shells, using largest acceptable shell as fallback"
+                        )
+                    largest_acceptable = max(
+                        acceptable_shells, key=lambda s: s["face_count"]
+                    )
+                    shell = largest_acceptable["shell"]
             else:
                 # No valid faces collected - fallback to largest acceptable shell
-                largest_acceptable = max(acceptable_shells, key=lambda s: s['face_count'])
-                shell = largest_acceptable['shell']
+                largest_acceptable = max(
+                    acceptable_shells, key=lambda s: s["face_count"]
+                )
+                shell = largest_acceptable["shell"]
 
         else:
             # No valid shells found, try re-sewing approach as fallback
             if debug:
-                log(f"[SHELL DIAGNOSTIC] No valid shells found, attempting re-sewing as fallback...")
+                log(
+                    f"[SHELL DIAGNOSTIC] No valid shells found, attempting re-sewing as fallback..."
+                )
 
             all_faces_from_shells = []
             for info in shell_info:
-                sh = info['shell']
+                sh = info["shell"]
                 face_exp = TopExp_Explorer(sh, TopAbs_FACE)
                 while face_exp.More():
                     all_faces_from_shells.append(topods.Face(face_exp.Current()))
                     face_exp.Next()
 
             if debug:
-                log(f"[SHELL DIAGNOSTIC] Collected {len(all_faces_from_shells)} faces from all shells for re-sewing")
+                log(
+                    f"[SHELL DIAGNOSTIC] Collected {len(all_faces_from_shells)} faces from all shells for re-sewing"
+                )
 
             # Build single shell from all collected faces
             if all_faces_from_shells:
-                sewing_multi = BRepBuilderAPI_Sewing(tolerance * 10.0, True, True, True, False)
+                sewing_multi = BRepBuilderAPI_Sewing(
+                    tolerance * 10.0, True, True, True, False
+                )
                 for fc in all_faces_from_shells:
                     sewing_multi.Add(fc)
                 sewing_multi.Perform()
@@ -447,12 +504,16 @@ def build_shell_from_faces(
                     multi_exp.Next()
 
                 if debug:
-                    log(f"[SHELL DIAGNOSTIC] Re-sewing produced {len(resewn_shells)} shell(s)")
+                    log(
+                        f"[SHELL DIAGNOSTIC] Re-sewing produced {len(resewn_shells)} shell(s)"
+                    )
 
                 # If re-sewing created multiple shells again, find the largest one
                 if len(resewn_shells) > 1:
                     if debug:
-                        log("[SHELL DIAGNOSTIC] Re-sewing still created multiple shells, selecting largest...")
+                        log(
+                            "[SHELL DIAGNOSTIC] Re-sewing still created multiple shells, selecting largest..."
+                        )
 
                     largest_shell = None
                     largest_face_count = 0
@@ -465,7 +526,7 @@ def build_shell_from_faces(
                             face_exp.Next()
 
                         if debug:
-                            log(f"  Re-sewn shell {i+1}: {face_count} faces")
+                            log(f"  Re-sewn shell {i + 1}: {face_count} faces")
 
                         if face_count > largest_face_count:
                             largest_face_count = face_count
@@ -473,7 +534,9 @@ def build_shell_from_faces(
 
                     shell = largest_shell
                     if debug:
-                        log(f"[SHELL DIAGNOSTIC] Selected largest re-sewn shell with {largest_face_count} faces")
+                        log(
+                            f"[SHELL DIAGNOSTIC] Selected largest re-sewn shell with {largest_face_count} faces"
+                        )
 
                 elif len(resewn_shells) == 1:
                     shell = resewn_shells[0]
@@ -483,11 +546,15 @@ def build_shell_from_faces(
                         while shell_face_exp.More():
                             shell_face_count += 1
                             shell_face_exp.Next()
-                        log(f"[SHELL DIAGNOSTIC] Rebuilt shell contains {shell_face_count} faces")
+                        log(
+                            f"[SHELL DIAGNOSTIC] Rebuilt shell contains {shell_face_count} faces"
+                        )
                 else:
                     # Fallback: use largest original shell if re-sewing failed completely
                     if debug:
-                        log("[SHELL DIAGNOSTIC] Re-sewing failed, selecting largest original shell as fallback")
+                        log(
+                            "[SHELL DIAGNOSTIC] Re-sewing failed, selecting largest original shell as fallback"
+                        )
 
                     largest_shell = None
                     largest_face_count = 0
@@ -505,7 +572,9 @@ def build_shell_from_faces(
 
                     shell = largest_shell
                     if debug:
-                        log(f"[SHELL DIAGNOSTIC] Selected largest original shell with {largest_face_count} faces")
+                        log(
+                            f"[SHELL DIAGNOSTIC] Selected largest original shell with {largest_face_count} faces"
+                        )
             else:
                 # No faces collected, use first shell as fallback
                 shell = shells[0]
@@ -556,7 +625,9 @@ def build_shell_from_faces(
                                 shell = fixed_shell
                             else:
                                 if debug:
-                                    log("Shell still invalid after fixing, using best attempt")
+                                    log(
+                                        "Shell still invalid after fixing, using best attempt"
+                                    )
                     except Exception as e:
                         if debug:
                             log(f"ShapeFix_Shell failed: {e}")
