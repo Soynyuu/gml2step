@@ -305,12 +305,11 @@ pytest
 
 This project is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-or-later).
 
-gml2step is derived from [Paper-CAD](https://github.com/Soynyuu/Paper-CAD), which is based on [chili3d](https://github.com/xiangechen/chili3d) by xiangechen. See [NOTICE](NOTICE) for full attribution.
+gml2step was originally developed as part of [Paper-CAD](https://github.com/Soynyuu/Paper-CAD) and extracted as a standalone library. See [NOTICE](NOTICE) for full attribution.
 
 ## Acknowledgments
 
 - [Paper-CAD](https://github.com/Soynyuu/Paper-CAD) — The parent project from which gml2step was extracted
-- [chili3d](https://github.com/xiangechen/chili3d) — The CAD framework that Paper-CAD extends
 - [PLATEAU](https://www.mlit.go.jp/plateau/) — Japan's national 3D city model project (MLIT)
 - [OpenCASCADE](https://www.opencascade.com/) / [pythonocc-core](https://github.com/tpaviot/pythonocc-core) — 3D CAD kernel for STEP conversion
 - [pyproj](https://pyproj4.github.io/pyproj/) — Coordinate reference system transformations

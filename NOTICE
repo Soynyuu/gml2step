@@ -1,44 +1,24 @@
-Paper-CAD
+gml2step
 Copyright (c) 2025 Soynyuu
 
-This software is based on chili3d, which is licensed under the 
-GNU Affero General Public License v3.0 (AGPL-3.0).
+This software was originally developed as part of Paper-CAD
+(https://github.com/Soynyuu/Paper-CAD) and extracted as a
+standalone library for CityGML parsing and STEP conversion.
 
 ===============================================================================
 
-This product includes software developed by:
-- chili3d (https://github.com/xiangechen/chili3d)
-  Copyright (c) 2022-2025 仙阁 (xiangetg@msn.cn)
-  Licensed under AGPL-3.0
-
-Paper-CAD is a derivative work that extends chili3d with:
-- Building model creation and papercraft unfolding capabilities
-- PLATEAU CityGML integration
-- SVG/PDF export for papercraft templates
-- Backend API for STEP file processing
-
-===============================================================================
-
-For commercial licensing of the underlying chili3d framework, 
-please contact: xiangetg@msn.cn
-
-For questions about Paper-CAD specifically, please use the 
-GitHub repository: https://github.com/Soynyuu/Paper-CAD
-
-===============================================================================
-
-Additional open source components used by this project:
+Open source components used by this project:
 
 - OpenCASCADE Technology (LGPL v2.1 with exception)
   https://www.opencascade.com/
 
-- Three.js (MIT License)
-  https://threejs.org/
-
-- FastAPI (MIT License)
-  https://fastapi.tiangolo.com/
-
 - pythonOCC (LGPL v3.0)
   https://github.com/tpaviot/pythonocc-core
+
+- pyproj (MIT License)
+  https://pyproj4.github.io/pyproj/
+
+- Typer (MIT License)
+  https://typer.tiangolo.com/
 
 See the respective projects for their full license terms.

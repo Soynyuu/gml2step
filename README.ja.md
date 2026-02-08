@@ -307,12 +307,11 @@ pytest
 
 このプロジェクトは [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-or-later) の下でライセンスされています。
 
-gml2step は [Paper-CAD](https://github.com/Soynyuu/Paper-CAD) から派生しており、Paper-CAD は xiangechen 氏の [chili3d](https://github.com/xiangechen/chili3d) をベースとしています。詳細な帰属表示は [NOTICE](NOTICE) をご覧ください。
+gml2step は [Paper-CAD](https://github.com/Soynyuu/Paper-CAD) の一部として開発され、スタンドアロンライブラリとして抽出されました。詳細な帰属表示は [NOTICE](NOTICE) をご覧ください。
 
 ## 謝辞
 
 - [Paper-CAD](https://github.com/Soynyuu/Paper-CAD) — gml2step の抽出元となった親プロジェクト
-- [chili3d](https://github.com/xiangechen/chili3d) — Paper-CAD が拡張した CAD フレームワーク
 - [PLATEAU](https://www.mlit.go.jp/plateau/) — 国土交通省の3D都市モデルプロジェクト
 - [OpenCASCADE](https://www.opencascade.com/) / [pythonocc-core](https://github.com/tpaviot/pythonocc-core) — STEP 変換用3D CADカーネル
 - [pyproj](https://pyproj4.github.io/pyproj/) — 座標参照系変換
