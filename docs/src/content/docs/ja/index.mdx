@@ -1,0 +1,65 @@
+---
+title: gml2step
+description: CityGML を STEP に変換するツールキット
+template: splash
+hero:
+  title: gml2step
+  tagline: CityGML のパースと STEP 変換。CAD/BIM ワークフロー向け。
+  actions:
+    - text: はじめる
+      link: /gml2step/ja/installation/
+      variant: primary
+    - text: GitHub
+      link: https://github.com/Soynyuu/gml2step
+      icon: external
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## 何ができるか
+
+CityGML 2.0 ファイルを読み込んで、CAD/BIM で使える STEP (ISO 10303-21) ファイルに変換します。国交省 [PLATEAU](https://www.mlit.go.jp/plateau/) の大規模データにも対応しています。
+
+<CardGrid>
+  <Card title="パース" icon="document">
+    ストリーミング対応で、どんなに大きい CityGML でもメモリ一定で処理できます。建物メタデータ、フットプリント、ジオメトリの抽出が可能。
+  </Card>
+  <Card title="変換" icon="setting">
+    OpenCASCADE で 3D 建物ジオメトリを STEP に変換。4つの変換方式と LoD 自動フォールバック、段階的なジオメトリ修復つき。
+  </Card>
+  <Card title="取得" icon="magnifier">
+    PLATEAU の公開 API から住所やメッシュコードで CityGML データを取得。ジオコーディング、ランキング、キャッシュを含む。
+  </Card>
+  <Card title="抽出" icon="list-format">
+    CityGML から 2D フットプリントと高さを抽出。OCCT 不要で動きます。
+  </Card>
+</CardGrid>
+
+---
+
+## 使用例
+
+```bash
+# パースして概要を出力
+gml2step parse ./building.gml
+
+# STEP に変換
+gml2step convert ./building.gml ./output.step --method auto
+
+# フットプリント抽出
+gml2step extract-footprints ./building.gml --output-json ./fp.json
+```
+
+```python
+from gml2step import convert, parse, stream_parse, extract_footprints
+
+# パース (OCCT 不要)
+summary = parse("building.gml")
+
+# 1棟ずつストリーム処理
+for building, xlinks in stream_parse("building.gml"):
+    process(building)
+
+# STEP 変換
+ok, msg = convert("building.gml", "output.step", method="auto")
+```

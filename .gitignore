@@ -43,6 +43,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# Node / docs site
+node_modules/
+
 # Project-specific
 *.step
 *.stp
