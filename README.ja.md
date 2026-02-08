@@ -14,6 +14,19 @@
 CityGML ファイルをパースして STEP (ISO 10303-21) に変換するツールです。[Paper-CAD](https://github.com/Soynyuu/Paper-CAD) から切り出しました。
 
 ドキュメント: **https://soynyuu.github.io/gml2step/**
+## 概要
+
+CityGML 2.0 の建物データを読み込んで、CAD/BIM で扱える STEP ファイルに変換します。国交省 [PLATEAU](https://www.mlit.go.jp/plateau/) の大規模データにも対応しています。
+
+**できること:**
+
+- **CityGML パース** — ストリーミング対応で巨大ファイルも処理可能
+- **STEP 変換** — OpenCASCADE ベース、LoD の自動フォールバック (LoD3 -> LoD2 -> LoD1 -> LoD0)
+- **4つの変換方式** — solid / sew / extrude / auto
+- **7フェーズの変換パイプライン** — 段階的な自動修復つき
+- **PLATEAU データ取得** — 公開 API (国交省データカタログ API + OSM Nominatim) 経由
+- **フットプリント抽出** — OCCT なしで 2D 外形 + 高さ推定
+- **CRS 自動検出** — 平面直角座標系 全19系に対応
 
 ## 目次
 
@@ -31,19 +44,7 @@ CityGML ファイルをパースして STEP (ISO 10303-21) に変換するツー
 - [開発](#開発)
 - [ライセンス](#ライセンス)
 
-## 概要
 
-CityGML 2.0 の建物データを読み込んで、CAD/BIM で扱える STEP ファイルに変換します。国交省 [PLATEAU](https://www.mlit.go.jp/plateau/) の大規模データにも対応しています。
-
-**できること:**
-
-- **CityGML パース** — ストリーミング対応で巨大ファイルも処理可能
-- **STEP 変換** — OpenCASCADE ベース、LoD の自動フォールバック (LoD3 -> LoD2 -> LoD1 -> LoD0)
-- **4つの変換方式** — solid / sew / extrude / auto
-- **7フェーズの変換パイプライン** — 段階的な自動修復つき
-- **PLATEAU データ取得** — 公開 API (国交省データカタログ API + OSM Nominatim) 経由
-- **フットプリント抽出** — OCCT なしで 2D 外形 + 高さ推定
-- **CRS 自動検出** — 平面直角座標系 全19系に対応
 
 ## インストール
 
