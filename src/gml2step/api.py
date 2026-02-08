@@ -6,8 +6,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 import xml.etree.ElementTree as ET
 
-from .citygml.pipeline.orchestrator import export_step_from_citygml
-from .citygml.lod.footprint_extractor import Footprint, parse_citygml_footprints
 from .citygml.streaming.parser import stream_parse_buildings
 from .citygml.transforms.crs_detection import detect_source_crs
 from .citygml.core.constants import NS
@@ -33,7 +31,13 @@ def convert(
     radius_meters: float = 100,
     use_streaming: bool = True,
 ) -> Tuple[bool, str]:
-    """Thin wrapper around export_step_from_citygml."""
+    """Thin wrapper around export_step_from_citygml.
+
+    Note: This function requires pythonocc-core for STEP conversion.
+    Install it with: conda install -c conda-forge pythonocc-core
+    """
+    from .citygml.pipeline.orchestrator import export_step_from_citygml
+
     return export_step_from_citygml(
         gml_path=gml_path,
         out_step=out_step,
@@ -106,11 +110,15 @@ def extract_footprints(
     gml_path: str,
     default_height: float = 10.0,
     limit: Optional[int] = None,
-) -> List[Footprint]:
-    """Thin wrapper around parse_citygml_footprints."""
+) -> List[Any]:
+    """Thin wrapper around parse_citygml_footprints.
+
+    Returns a list of Footprint dataclass instances.
+    """
+    from .citygml.lod.footprint_extractor import parse_citygml_footprints
+
     return parse_citygml_footprints(
         gml_path=gml_path,
         default_height=default_height,
         limit=limit,
     )
-

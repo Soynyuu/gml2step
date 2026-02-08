@@ -19,6 +19,11 @@ from ..utils.logging import log
 from .tolerance import compute_tolerance_from_face_list
 from .shell_builder import build_shell_from_faces
 
+_OCCT_INSTALL_MSG = (
+    "pythonocc-core is required for this operation. "
+    "Install it with: conda install -c conda-forge pythonocc-core"
+)
+
 
 def diagnose_shape_errors(shape: Any, debug: bool = False) -> Dict:
     """
@@ -51,25 +56,28 @@ def diagnose_shape_errors(shape: Any, debug: bool = False) -> Dict:
         - Invalid faces indicate topology problems
         - A closed shell is necessary for solid creation
     """
-    from OCC.Core.BRepCheck import BRepCheck_Analyzer
-    from OCC.Core.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_SHELL
-    from OCC.Core.TopExp import TopExp_Explorer
-    from OCC.Core.TopoDS import topods
-    from OCC.Core.BRep import BRep_Tool
+    try:
+        from OCC.Core.BRepCheck import BRepCheck_Analyzer
+        from OCC.Core.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_SHELL
+        from OCC.Core.TopExp import TopExp_Explorer
+        from OCC.Core.TopoDS import topods
+        from OCC.Core.BRep import BRep_Tool
+    except ImportError:
+        raise RuntimeError(_OCCT_INSTALL_MSG) from None
 
     errors = {
-        'is_valid': False,
-        'free_edges_count': 0,
-        'invalid_faces': [],
-        'shell_closed': None,
-        'error_summary': {}
+        "is_valid": False,
+        "free_edges_count": 0,
+        "invalid_faces": [],
+        "shell_closed": None,
+        "error_summary": {},
     }
 
     try:
         analyzer = BRepCheck_Analyzer(shape)
-        errors['is_valid'] = analyzer.IsValid()
+        errors["is_valid"] = analyzer.IsValid()
 
-        if not errors['is_valid']:
+        if not errors["is_valid"]:
             # Count free edges (edges not fully connected)
             edge_exp = TopExp_Explorer(shape, TopAbs_EDGE)
             edge_count = 0
@@ -84,7 +92,7 @@ def diagnose_shape_errors(shape: Any, debug: bool = False) -> Dict:
                     pass
                 edge_count += 1
                 edge_exp.Next()
-            errors['free_edges_count'] = free_edge_count
+            errors["free_edges_count"] = free_edge_count
 
             # Check faces
             face_exp = TopExp_Explorer(shape, TopAbs_FACE)
@@ -93,7 +101,7 @@ def diagnose_shape_errors(shape: Any, debug: bool = False) -> Dict:
                 face = topods.Face(face_exp.Current())
                 face_analyzer = BRepCheck_Analyzer(face)
                 if not face_analyzer.IsValid():
-                    errors['invalid_faces'].append(face_count)
+                    errors["invalid_faces"].append(face_count)
                 face_count += 1
                 face_exp.Next()
 
@@ -101,23 +109,25 @@ def diagnose_shape_errors(shape: Any, debug: bool = False) -> Dict:
             shell_exp = TopExp_Explorer(shape, TopAbs_SHELL)
             if shell_exp.More():
                 shell = topods.Shell(shell_exp.Current())
-                errors['shell_closed'] = BRep_Tool.IsClosed(shell)
+                errors["shell_closed"] = BRep_Tool.IsClosed(shell)
 
-            errors['error_summary'] = {
-                'total_edges': edge_count,
-                'free_edges': free_edge_count,
-                'total_faces': face_count,
-                'invalid_faces_count': len(errors['invalid_faces']),
-                'shell_closed': errors['shell_closed']
+            errors["error_summary"] = {
+                "total_edges": edge_count,
+                "free_edges": free_edge_count,
+                "total_faces": face_count,
+                "invalid_faces_count": len(errors["invalid_faces"]),
+                "shell_closed": errors["shell_closed"],
             }
 
             if debug:
                 log(f"[DIAGNOSTICS] Shape validation failed:")
                 log(f"  - Total edges: {edge_count}, Free edges: {free_edge_count}")
-                log(f"  - Total faces: {face_count}, Invalid faces: {len(errors['invalid_faces'])}")
+                log(
+                    f"  - Total faces: {face_count}, Invalid faces: {len(errors['invalid_faces'])}"
+                )
                 log(f"  - Shell closed: {errors['shell_closed']}")
     except Exception as e:
-        errors['exception'] = str(e)
+        errors["exception"] = str(e)
         if debug:
             log(f"[DIAGNOSTICS] Exception during diagnosis: {e}")
 
@@ -149,8 +159,11 @@ def is_valid_shape(shape: Any) -> bool:
         - Uses BRepCheck_Analyzer for topology validation
         - Compounds may contain multiple disconnected parts (valid for export)
     """
-    from OCC.Core.BRepCheck import BRepCheck_Analyzer
-    from OCC.Core.TopAbs import TopAbs_SOLID, TopAbs_SHELL, TopAbs_COMPOUND
+    try:
+        from OCC.Core.BRepCheck import BRepCheck_Analyzer
+        from OCC.Core.TopAbs import TopAbs_SOLID, TopAbs_SHELL, TopAbs_COMPOUND
+    except ImportError:
+        raise RuntimeError(_OCCT_INSTALL_MSG) from None
 
     if shape is None:
         return False
@@ -176,7 +189,7 @@ def make_solid_with_cavities(
     tolerance: Optional[float] = None,
     debug: bool = False,
     precision_mode: str = "auto",
-    shape_fix_level: str = "standard"
+    shape_fix_level: str = "standard",
 ) -> Optional[Any]:  # Optional[TopoDS_Shape]
     """
     Build a solid with cavities from exterior and interior shells.
@@ -219,25 +232,34 @@ def make_solid_with_cavities(
         - Returns shell if solid creation fails
         - Interior shells (cavities) are only added if they're closed
     """
-    from OCC.Core.BRep import BRep_Tool
-    from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeSolid
-    from OCC.Core.BRepCheck import BRepCheck_Analyzer
-    from OCC.Core.ShapeFix import ShapeFix_Solid, ShapeFix_Shape
-    from OCC.Core.ShapeUpgrade import ShapeUpgrade_UnifySameDomain
+    try:
+        from OCC.Core.BRep import BRep_Tool
+        from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeSolid
+        from OCC.Core.BRepCheck import BRepCheck_Analyzer
+        from OCC.Core.ShapeFix import ShapeFix_Solid, ShapeFix_Shape
+        from OCC.Core.ShapeUpgrade import ShapeUpgrade_UnifySameDomain
+    except ImportError:
+        raise RuntimeError(_OCCT_INSTALL_MSG) from None
 
     # Auto-compute tolerance if not provided
     if tolerance is None:
         tolerance = compute_tolerance_from_face_list(exterior_faces, precision_mode)
         if debug:
-            log(f"Auto-computed tolerance: {tolerance:.6f} (precision_mode: {precision_mode})")
+            log(
+                f"Auto-computed tolerance: {tolerance:.6f} (precision_mode: {precision_mode})"
+            )
 
     # Build exterior shell
     if debug:
         log(f"Attempting to build exterior shell from {len(exterior_faces)} faces...")
-    exterior_shell = build_shell_from_faces(exterior_faces, tolerance, debug, shape_fix_level)
+    exterior_shell = build_shell_from_faces(
+        exterior_faces, tolerance, debug, shape_fix_level
+    )
     if exterior_shell is None:
         if debug:
-            log(f"ERROR: Failed to build exterior shell (sewing or shell extraction failed)")
+            log(
+                f"ERROR: Failed to build exterior shell (sewing or shell extraction failed)"
+            )
         return None
 
     # Check if exterior shell is closed
@@ -245,7 +267,9 @@ def make_solid_with_cavities(
         is_closed = BRep_Tool.IsClosed(exterior_shell)
         if not is_closed:
             if debug:
-                log(f"WARNING: Exterior shell is not closed, returning shell instead of solid")
+                log(
+                    f"WARNING: Exterior shell is not closed, returning shell instead of solid"
+                )
         else:
             if debug:
                 log(f"Exterior shell is closed, will attempt to create solid")
@@ -263,13 +287,13 @@ def make_solid_with_cavities(
                 if BRep_Tool.IsClosed(int_shell):
                     interior_shells.append(int_shell)
                     if debug:
-                        log(f"Added interior shell {i+1} (closed)")
+                        log(f"Added interior shell {i + 1} (closed)")
                 else:
                     if debug:
-                        log(f"Interior shell {i+1} is not closed, skipping")
+                        log(f"Interior shell {i + 1} is not closed, skipping")
             except Exception as e:
                 if debug:
-                    log(f"Interior shell {i+1} check failed: {e}")
+                    log(f"Interior shell {i + 1} check failed: {e}")
 
     # Try to create solid
     if is_closed:
@@ -292,7 +316,9 @@ def make_solid_with_cavities(
             if analyzer.IsValid():
                 log(f"[VALIDATION] ✓ Initial solid validation succeeded")
                 if debug:
-                    log(f"[INFO] Created valid solid with {len(interior_shells)} cavities")
+                    log(
+                        f"[INFO] Created valid solid with {len(interior_shells)} cavities"
+                    )
                 return solid
             else:
                 log(f"[VALIDATION] ✗ Initial solid validation failed")
@@ -301,39 +327,53 @@ def make_solid_with_cavities(
                 if debug:
                     log(f"\n[PHASE:4.5] ERROR DIAGNOSIS")
                     diag = diagnose_shape_errors(solid, debug=True)
-                    if 'exception' not in diag:
+                    if "exception" not in diag:
                         log(f"[DIAGNOSIS] Root cause analysis:")
-                        summary = diag.get('error_summary', {})
-                        if summary.get('free_edges', 0) > 0:
-                            log(f"  ⚠ {summary['free_edges']}/{summary['total_edges']} edges are not fully connected (FREE EDGES)")
-                            log(f"     → This means some faces don't share edges properly")
-                        if summary.get('invalid_faces_count', 0) > 0:
-                            log(f"  ⚠ {summary['invalid_faces_count']}/{summary['total_faces']} faces are invalid")
-                        if summary.get('shell_closed') == False:
+                        summary = diag.get("error_summary", {})
+                        if summary.get("free_edges", 0) > 0:
+                            log(
+                                f"  ⚠ {summary['free_edges']}/{summary['total_edges']} edges are not fully connected (FREE EDGES)"
+                            )
+                            log(
+                                f"     → This means some faces don't share edges properly"
+                            )
+                        if summary.get("invalid_faces_count", 0) > 0:
+                            log(
+                                f"  ⚠ {summary['invalid_faces_count']}/{summary['total_faces']} faces are invalid"
+                            )
+                        if summary.get("shell_closed") == False:
                             log(f"  ⚠ Shell is not closed (has gaps or holes)")
-                        log(f"[DIAGNOSIS] This geometry has fundamental topology issues that may not be repairable")
+                        log(
+                            f"[DIAGNOSIS] This geometry has fundamental topology issues that may not be repairable"
+                        )
 
                 log(f"\n[PHASE:5] AUTOMATIC REPAIR WITH AUTO-ESCALATION")
 
                 # Define escalation levels (minimal → standard → aggressive → ultra)
                 escalation_map = {
-                    'minimal': ['minimal', 'standard', 'aggressive', 'ultra'],
-                    'standard': ['standard', 'aggressive', 'ultra'],
-                    'aggressive': ['aggressive', 'ultra'],
-                    'ultra': ['ultra']
+                    "minimal": ["minimal", "standard", "aggressive", "ultra"],
+                    "standard": ["standard", "aggressive", "ultra"],
+                    "aggressive": ["aggressive", "ultra"],
+                    "ultra": ["ultra"],
                 }
 
-                levels_to_try = escalation_map.get(shape_fix_level, ['minimal', 'standard', 'aggressive', 'ultra'])
-                log(f"[INFO] Auto-escalation enabled: will try levels {' → '.join(levels_to_try)}")
+                levels_to_try = escalation_map.get(
+                    shape_fix_level, ["minimal", "standard", "aggressive", "ultra"]
+                )
+                log(
+                    f"[INFO] Auto-escalation enabled: will try levels {' → '.join(levels_to_try)}"
+                )
                 log(f"[INFO] Starting from: {shape_fix_level}")
                 log(f"")
 
                 # Try each escalation level
                 for current_level_idx, current_level in enumerate(levels_to_try):
                     if current_level_idx > 0:
-                        log(f"\n{'='*80}")
-                        log(f"[ESCALATION] Previous level failed, escalating to: {current_level}")
-                        log(f"{'='*80}")
+                        log(f"\n{'=' * 80}")
+                        log(
+                            f"[ESCALATION] Previous level failed, escalating to: {current_level}"
+                        )
+                        log(f"{'=' * 80}")
 
                     log(f"\n[REPAIR LEVEL: {current_level.upper()}]")
 
@@ -348,51 +388,77 @@ def make_solid_with_cavities(
 
                         analyzer_repaired = BRepCheck_Analyzer(repaired_solid)
                         if analyzer_repaired.IsValid():
-                            log(f"[REPAIR] ✓ ShapeFix_Solid succeeded at level '{current_level}'!")
+                            log(
+                                f"[REPAIR] ✓ ShapeFix_Solid succeeded at level '{current_level}'!"
+                            )
                             log(f"[INFO] Repaired solid is now valid")
                             if current_level_idx > 0:
-                                log(f"[INFO] Success after escalation from '{shape_fix_level}' to '{current_level}'")
+                                log(
+                                    f"[INFO] Success after escalation from '{shape_fix_level}' to '{current_level}'"
+                                )
                             return repaired_solid
                         else:
                             log(f"[REPAIR] ✗ ShapeFix_Solid did not fix all issues")
                             solid = repaired_solid  # Use partially repaired version for next attempts
                     except Exception as e:
-                        log(f"[REPAIR] ✗ ShapeFix_Solid raised exception: {type(e).__name__}: {str(e)}")
+                        log(
+                            f"[REPAIR] ✗ ShapeFix_Solid raised exception: {type(e).__name__}: {str(e)}"
+                        )
 
                     # Repair Strategy 2: ShapeUpgrade_UnifySameDomain (standard+)
-                    if current_level in ['standard', 'aggressive', 'ultra']:
-                        log(f"\n[STEP 2/4] Trying ShapeUpgrade_UnifySameDomain (topology simplification)...")
+                    if current_level in ["standard", "aggressive", "ultra"]:
+                        log(
+                            f"\n[STEP 2/4] Trying ShapeUpgrade_UnifySameDomain (topology simplification)..."
+                        )
                         try:
-                            unifier = ShapeUpgrade_UnifySameDomain(solid, True, True, True)
+                            unifier = ShapeUpgrade_UnifySameDomain(
+                                solid, True, True, True
+                            )
                             unifier.Build()
                             unified_shape = unifier.Shape()
 
                             analyzer_unified = BRepCheck_Analyzer(unified_shape)
                             if analyzer_unified.IsValid():
-                                log(f"[REPAIR] ✓ ShapeUpgrade_UnifySameDomain succeeded at level '{current_level}'!")
+                                log(
+                                    f"[REPAIR] ✓ ShapeUpgrade_UnifySameDomain succeeded at level '{current_level}'!"
+                                )
                                 log(f"[INFO] Unified shape is now valid")
                                 if current_level_idx > 0:
-                                    log(f"[INFO] Success after escalation from '{shape_fix_level}' to '{current_level}'")
+                                    log(
+                                        f"[INFO] Success after escalation from '{shape_fix_level}' to '{current_level}'"
+                                    )
                                 return unified_shape
                             else:
-                                log(f"[REPAIR] ✗ Topology simplification did not create valid solid")
+                                log(
+                                    f"[REPAIR] ✗ Topology simplification did not create valid solid"
+                                )
                         except Exception as e:
-                            log(f"[REPAIR] ✗ ShapeUpgrade_UnifySameDomain raised exception: {type(e).__name__}: {str(e)}")
+                            log(
+                                f"[REPAIR] ✗ ShapeUpgrade_UnifySameDomain raised exception: {type(e).__name__}: {str(e)}"
+                            )
                     else:
                         log(f"[STEP 2/4] Skipped (requires level standard+)")
 
                     # Repair Strategy 3: Rebuild with relaxed tolerance (aggressive+)
-                    if current_level in ['aggressive', 'ultra']:
-                        log(f"\n[STEP 3/4] Trying rebuild with relaxed tolerance (2x)...")
+                    if current_level in ["aggressive", "ultra"]:
+                        log(
+                            f"\n[STEP 3/4] Trying rebuild with relaxed tolerance (2x)..."
+                        )
                         try:
                             relaxed_tolerance = tolerance * 2.0
                             log(f"[INFO] Original tolerance: {tolerance:.6f}")
                             log(f"[INFO] Relaxed tolerance: {relaxed_tolerance:.6f}")
 
                             # Rebuild shell with relaxed tolerance
-                            relaxed_shell = build_shell_from_faces(exterior_faces, relaxed_tolerance, debug, current_level)
-                            if relaxed_shell is not None and BRep_Tool.IsClosed(relaxed_shell):
-                                mk_solid_relaxed = BRepBuilderAPI_MakeSolid(relaxed_shell)
+                            relaxed_shell = build_shell_from_faces(
+                                exterior_faces, relaxed_tolerance, debug, current_level
+                            )
+                            if relaxed_shell is not None and BRep_Tool.IsClosed(
+                                relaxed_shell
+                            ):
+                                mk_solid_relaxed = BRepBuilderAPI_MakeSolid(
+                                    relaxed_shell
+                                )
                                 for int_shell in interior_shells:
                                     try:
                                         mk_solid_relaxed.Add(int_shell)
@@ -402,21 +468,31 @@ def make_solid_with_cavities(
                                 relaxed_solid = mk_solid_relaxed.Solid()
                                 analyzer_relaxed = BRepCheck_Analyzer(relaxed_solid)
                                 if analyzer_relaxed.IsValid():
-                                    log(f"[REPAIR] ✓ Rebuild with relaxed tolerance succeeded at level '{current_level}'!")
+                                    log(
+                                        f"[REPAIR] ✓ Rebuild with relaxed tolerance succeeded at level '{current_level}'!"
+                                    )
                                     if current_level_idx > 0:
-                                        log(f"[INFO] Success after escalation from '{shape_fix_level}' to '{current_level}'")
+                                        log(
+                                            f"[INFO] Success after escalation from '{shape_fix_level}' to '{current_level}'"
+                                        )
                                     return relaxed_solid
                                 else:
-                                    log(f"[REPAIR] ✗ Relaxed tolerance rebuild did not create valid solid")
+                                    log(
+                                        f"[REPAIR] ✗ Relaxed tolerance rebuild did not create valid solid"
+                                    )
                             else:
-                                log(f"[REPAIR] ✗ Could not rebuild closed shell with relaxed tolerance")
+                                log(
+                                    f"[REPAIR] ✗ Could not rebuild closed shell with relaxed tolerance"
+                                )
                         except Exception as e:
-                            log(f"[REPAIR] ✗ Relaxed tolerance rebuild raised exception: {type(e).__name__}: {str(e)}")
+                            log(
+                                f"[REPAIR] ✗ Relaxed tolerance rebuild raised exception: {type(e).__name__}: {str(e)}"
+                            )
                     else:
                         log(f"[STEP 3/4] Skipped (requires level aggressive+)")
 
                     # Repair Strategy 4: ShapeFix_Shape (ultra only)
-                    if current_level == 'ultra':
+                    if current_level == "ultra":
                         log(f"\n[STEP 4/4] Trying ShapeFix_Shape (most aggressive)...")
                         try:
                             shape_fixer = ShapeFix_Shape(solid)
@@ -427,25 +503,41 @@ def make_solid_with_cavities(
 
                             analyzer_fixed = BRepCheck_Analyzer(fixed_shape)
                             if analyzer_fixed.IsValid():
-                                log(f"[REPAIR] ✓ ShapeFix_Shape succeeded at level 'ultra'!")
+                                log(
+                                    f"[REPAIR] ✓ ShapeFix_Shape succeeded at level 'ultra'!"
+                                )
                                 if current_level_idx > 0:
-                                    log(f"[INFO] Success after escalation from '{shape_fix_level}' to 'ultra'")
+                                    log(
+                                        f"[INFO] Success after escalation from '{shape_fix_level}' to 'ultra'"
+                                    )
                                 return fixed_shape
                             else:
-                                log(f"[REPAIR] ✗ ShapeFix_Shape did not create valid solid")
+                                log(
+                                    f"[REPAIR] ✗ ShapeFix_Shape did not create valid solid"
+                                )
                         except Exception as e:
-                            log(f"[REPAIR] ✗ ShapeFix_Shape raised exception: {type(e).__name__}: {str(e)}")
+                            log(
+                                f"[REPAIR] ✗ ShapeFix_Shape raised exception: {type(e).__name__}: {str(e)}"
+                            )
                     else:
                         log(f"[STEP 4/4] Skipped (requires level ultra)")
 
-                    log(f"\n[REPAIR LEVEL: {current_level.upper()}] ✗ All strategies failed at this level")
+                    log(
+                        f"\n[REPAIR LEVEL: {current_level.upper()}] ✗ All strategies failed at this level"
+                    )
 
                 # All escalation levels exhausted
-                log(f"\n{'='*80}")
-                log(f"[REPAIR] ✗ All repair attempts exhausted across all escalation levels")
+                log(f"\n{'=' * 80}")
+                log(
+                    f"[REPAIR] ✗ All repair attempts exhausted across all escalation levels"
+                )
                 log(f"[INFO] Tried levels: {' → '.join(levels_to_try)}")
-                log(f"[DECISION] → Returning shell instead of solid (may cause issues in merging/export)")
-                log(f"⚠ WARNING: This shape may fail in BuildingPart fusion or STEP export")
+                log(
+                    f"[DECISION] → Returning shell instead of solid (may cause issues in merging/export)"
+                )
+                log(
+                    f"⚠ WARNING: This shape may fail in BuildingPart fusion or STEP export"
+                )
                 log(f"⚠ WARNING: The building geometry has fundamental topology issues")
                 return exterior_shell
         except Exception as e:
