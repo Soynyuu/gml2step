@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gml2step"
-version = "0.1.0"
+version = "0.1.1"
 description = "CityGML parsing and STEP conversion toolkit extracted from Paper-CAD"
 readme = "README.md"
 requires-python = ">=3.10"
