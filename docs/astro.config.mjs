@@ -55,6 +55,14 @@ export default defineConfig({
 				{
 					tag: 'link',
 					attrs: {
+						rel: 'icon',
+						type: 'image/svg+xml',
+						href: '/favicon.svg',
+					},
+				},
+				{
+					tag: 'link',
+					attrs: {
 						rel: 'preconnect',
 						href: 'https://fonts.googleapis.com',
 					},
