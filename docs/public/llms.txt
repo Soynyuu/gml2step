@@ -1,0 +1,21 @@
+# gml2step docs
+
+Official documentation for gml2step (CityGML to STEP conversion toolkit).
+
+Primary docs:
+- https://soynyuu.github.io/gml2step/en/
+- https://soynyuu.github.io/gml2step/ja/
+
+Core references:
+- https://soynyuu.github.io/gml2step/en/installation/
+- https://soynyuu.github.io/gml2step/en/cli/
+- https://soynyuu.github.io/gml2step/en/api/
+- https://soynyuu.github.io/gml2step/en/conversion/
+- https://soynyuu.github.io/gml2step/en/configuration/
+- https://soynyuu.github.io/gml2step/en/plateau/
+
+Repository:
+- https://github.com/Soynyuu/gml2step
+
+Machine-readable long context:
+- https://soynyuu.github.io/gml2step/llms-full.txt

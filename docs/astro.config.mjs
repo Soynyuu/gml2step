@@ -57,8 +57,68 @@ export default defineConfig({
 					attrs: {
 						rel: 'icon',
 						type: 'image/svg+xml',
-						href: '/favicon.svg',
+						href: '/gml2step/favicon.svg',
 					},
+				},
+				{
+					tag: 'meta',
+					attrs: {
+						name: 'robots',
+						content: 'index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1',
+					},
+				},
+				{
+					tag: 'meta',
+					attrs: {
+						property: 'og:type',
+						content: 'website',
+					},
+				},
+				{
+					tag: 'meta',
+					attrs: {
+						property: 'og:site_name',
+						content: 'gml2step',
+					},
+				},
+				{
+					tag: 'meta',
+					attrs: {
+						property: 'og:image',
+						content: 'https://soynyuu.github.io/gml2step/og-image.svg',
+					},
+				},
+				{
+					tag: 'meta',
+					attrs: {
+						name: 'twitter:card',
+						content: 'summary_large_image',
+					},
+				},
+				{
+					tag: 'meta',
+					attrs: {
+						name: 'twitter:image',
+						content: 'https://soynyuu.github.io/gml2step/og-image.svg',
+					},
+				},
+				{
+					tag: 'script',
+					attrs: {
+						type: 'application/ld+json',
+					},
+					content: JSON.stringify({
+						'@context': 'https://schema.org',
+						'@type': 'SoftwareApplication',
+						name: 'gml2step',
+						applicationCategory: 'DeveloperApplication',
+						operatingSystem: 'Linux, macOS, Windows',
+						programmingLanguage: 'Python',
+						softwareVersion: '0.x',
+						codeRepository: 'https://github.com/Soynyuu/gml2step',
+						url: 'https://soynyuu.github.io/gml2step/',
+						description: 'CityGML parser and STEP conversion toolkit for CAD/BIM workflows.',
+					}),
 				},
 				{
 					tag: 'link',

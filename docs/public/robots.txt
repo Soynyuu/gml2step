@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://soynyuu.github.io/gml2step/sitemap-index.xml

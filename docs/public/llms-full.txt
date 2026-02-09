@@ -1,0 +1,71 @@
+# gml2step: Long-form LLM context
+
+Project: gml2step
+Repository: https://github.com/Soynyuu/gml2step
+Docs: https://soynyuu.github.io/gml2step/en/
+
+## What this project does
+gml2step is a Python toolkit and CLI for:
+- Parsing CityGML 2.0 data.
+- Streaming large XML datasets with low memory usage.
+- Extracting building metadata and 2D footprints.
+- Converting 3D building geometry to STEP (ISO 10303-21) for CAD/BIM.
+- Fetching Japan PLATEAU data by address or mesh code (optional extras).
+
+## Install
+Python package:
+- `pip install gml2step`
+
+Development install:
+- `pip install -e ".[dev,plateau]"`
+
+## CLI essentials
+Parse:
+- `gml2step parse ./building.gml`
+
+Convert:
+- `gml2step convert ./building.gml ./output.step --method auto`
+
+Extract footprints:
+- `gml2step extract-footprints ./building.gml --output-json ./fp.json`
+
+PLATEAU fetch (when extras are installed):
+- See docs: https://soynyuu.github.io/gml2step/en/plateau/
+
+## Python API essentials
+Import:
+- `from gml2step import parse, stream_parse, convert, extract_footprints`
+
+Examples:
+- `summary = parse("building.gml")`
+- `for building, xlinks in stream_parse("building.gml"): ...`
+- `ok, msg = convert("building.gml", "output.step", method="auto")`
+
+## Configuration
+Important env vars include:
+- `CITYGML_CACHE_ENABLED`
+- `CITYGML_CACHE_DIR`
+- `PLATEAU_DATASET_FETCH_CONCURRENCY`
+
+See:
+- https://soynyuu.github.io/gml2step/en/configuration/
+
+## Main docs URLs (English)
+- https://soynyuu.github.io/gml2step/en/installation/
+- https://soynyuu.github.io/gml2step/en/cli/
+- https://soynyuu.github.io/gml2step/en/api/
+- https://soynyuu.github.io/gml2step/en/conversion/
+- https://soynyuu.github.io/gml2step/en/configuration/
+- https://soynyuu.github.io/gml2step/en/architecture/
+- https://soynyuu.github.io/gml2step/en/development/
+- https://soynyuu.github.io/gml2step/en/plateau/
+
+## Main docs URLs (Japanese)
+- https://soynyuu.github.io/gml2step/ja/installation/
+- https://soynyuu.github.io/gml2step/ja/cli/
+- https://soynyuu.github.io/gml2step/ja/api/
+- https://soynyuu.github.io/gml2step/ja/conversion/
+- https://soynyuu.github.io/gml2step/ja/configuration/
+- https://soynyuu.github.io/gml2step/ja/architecture/
+- https://soynyuu.github.io/gml2step/ja/development/
+- https://soynyuu.github.io/gml2step/ja/plateau/
