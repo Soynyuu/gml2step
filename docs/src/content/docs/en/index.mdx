@@ -4,7 +4,7 @@ description: CityGML to STEP conversion toolkit
 template: splash
 hero:
   title: gml2step
-  tagline: CityGML parsing and STEP conversion for CAD/BIM workflows
+  tagline: Convert CityGML to STEP. Make PLATEAU data editable in CAD
   actions:
     - text: Get started
       link: /gml2step/en/installation/
@@ -16,22 +16,37 @@ hero:
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## What it does
+## About this tool
 
-gml2step reads CityGML 2.0 files and produces STEP (ISO 10303-21) files suitable for CAD/CAM/BIM software. It handles Japan's [PLATEAU](https://www.mlit.go.jp/plateau/) large-scale 3D city model datasets out of the box.
+gml2step is a **Python library & command-line tool** for converting CityGML to STEP (ISO 10303-21). It provides both a Python API and CLI interface, allowing you to choose the best approach for your workflow.
+
+## What you can achieve
+
+The **world's first** open-source CityGML → STEP conversion implementation makes Japan's [PLATEAU](https://www.mlit.go.jp/plateau/) 3D city models **editable in standard CAD software**. Transform "view-only" PLATEAU data into fully editable models in your CAD/BIM environment.
+
+### Use cases
+
+- **Architectural design**: Import PLATEAU building data into CAD for renovation planning and urban development projects
+- **3D printing**: Adjust and optimize building models in CAD to create printable data
+- **Simulation & analysis**: Feed models into CAD/CAE tools for structural, thermal, or acoustic simulation
+- **Customization**: Use real-world building data as a foundation for design modifications and extensions
 
 <CardGrid>
-  <Card title="Parse" icon="document">
-    Stream-parse CityGML files of any size with constant memory usage. Extract building metadata, footprints, and geometry without loading the entire DOM.
+  <Card title="As a library" icon="rocket">
+    Embed in Python projects to automate CityGML parsing, conversion, and data extraction.
+    Streaming API keeps memory usage constant even for massive datasets.
   </Card>
-  <Card title="Convert" icon="setting">
-    Transform 3D building geometry to STEP via OpenCASCADE. Four conversion methods with automatic LoD fallback and progressive geometry repair.
+  <Card title="As a CLI tool" icon="laptop">
+    One command to convert CityGML to STEP. Integrate into scripts and pipelines
+    for batch processing and workflow automation.
   </Card>
-  <Card title="Fetch" icon="magnifier">
-    Download CityGML data from PLATEAU's public API by address or mesh code. Geocoding, ranking, and caching included.
+  <Card title="PLATEAU integration" icon="magnifier">
+    Fetch CityGML directly from PLATEAU's public API using addresses or mesh codes.
+    Access 3D city models across Japan.
   </Card>
-  <Card title="Extract" icon="list-format">
-    Pull 2D footprints with height estimates from CityGML — no OCCT dependency required.
+  <Card title="Flexible conversion" icon="setting">
+    Four conversion methods, automatic LoD fallback, and progressive geometry repair
+    handle CityGML data of varying quality.
   </Card>
 </CardGrid>
 
@@ -43,7 +58,7 @@ gml2step reads CityGML 2.0 files and produces STEP (ISO 10303-21) files suitable
 # Parse and summarize
 gml2step parse ./building.gml
 
-# Convert to STEP
+# Convert to STEP (open in CAD)
 gml2step convert ./building.gml ./output.step --method auto
 
 # Extract 2D footprints
@@ -60,6 +75,6 @@ summary = parse("building.gml")
 for building, xlinks in stream_parse("building.gml"):
     process(building)
 
-# Full conversion
+# Convert to STEP (editable in CAD)
 ok, msg = convert("building.gml", "output.step", method="auto")
 ```
